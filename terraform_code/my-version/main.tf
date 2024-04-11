@@ -25,8 +25,69 @@ data "aws_ami" "ami_id" {
 }
 
 #Get the default VPC ID
-data "aws_vpc" "default" {
-  default = true
+#data "aws_vpc" "default" {
+#  default = true
+#}
+
+#Create a new VPC
+resource "aws_vpc" "terraform-vpc" {
+  cidr_block = "10.0.0.0/16"
+  enable_dns_hostnames = true
+
+  tags = {
+    Name = "terraform-vpc"
+  }
+}
+
+#Create the subnets for the new VPC
+resource "aws_subnet" "public_subnets" {
+  count = length(var.public_cidrs)
+  cidr_block = var.public_cidrs[count.index]
+  vpc_id = aws_vpc.terraform-vpc.id
+
+  tags = {
+    Name = "PublicSubnet-${count.index}"
+  }
+}
+
+resource "aws_subnet" "private_subnets" {
+  count = length(var.private_cidrs)
+  cidr_block = var.private_cidrs[count.index]
+  vpc_id = aws_vpc.terraform-vpc.id
+
+  tags = {
+    Name = "PrivateSubnet-${count.index}"
+  }
+}
+
+#Create IGW for the public subnets
+resource "aws_internet_gateway" "terraform-igw" {
+  vpc_id = aws_vpc.terraform-vpc.id
+
+  tags = {
+    Name = "terraform-IGW"
+  }
+}
+
+#Create the route table for public routes
+resource "aws_route_table" "terraform-public-rt" {
+  vpc_id = aws_vpc.terraform-vpc.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.terraform-igw.id
+  }
+
+  tags = {
+    Name = "terraform-public-route-table"
+  }
+}
+
+#Associate public route table with public subnet
+resource "aws_route_table_association" "public-rt-assoc" {
+  count = length(var.public_cidrs)
+  subnet_id = "${element(aws_subnet.public_subnets.*.id, count.index)}"
+  route_table_id = aws_route_table.terraform-public-rt.id
 }
 
 #create the key pair
@@ -39,7 +100,7 @@ resource "aws_key_pair" "terraform-key-pair" {
 resource "aws_security_group" "terraform-allow-ssh" {
   name = "terraform-allow-ssh"
   description = "Allow SSH traffic for EC2 instances created in Terraform"
-  vpc_id = data.aws_vpc.default.id
+  vpc_id = aws_vpc.terraform-vpc.id
 }
 
 resource "aws_vpc_security_group_ingress_rule" "sg-ingress-rule" {
@@ -62,7 +123,9 @@ resource "aws_instance" "terraform-instance" {
   instance_type = "t3.medium"
   key_name = aws_key_pair.terraform-key-pair.key_name
   associate_public_ip_address = true
-  security_groups = [aws_security_group.terraform-allow-ssh.name]
+  #security_groups = [aws_security_group.terraform-allow-ssh.id]
+  subnet_id = aws_subnet.public_subnets[0].id
+  vpc_security_group_ids = [aws_security_group.terraform-allow-ssh.id]
 
   tags = {
     "Name" = "Terraform-Instance"
