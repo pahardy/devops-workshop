@@ -129,6 +129,6 @@ resource "aws_instance" "terraform-instance" {
   vpc_security_group_ids = [aws_security_group.terraform-allow-ssh.id]
 
   tags = {
-    "Name" = "Terraform-Instance"
+    "Name" = each.value
   }
 }
