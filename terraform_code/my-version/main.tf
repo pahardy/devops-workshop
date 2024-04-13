@@ -119,6 +119,7 @@ resource "aws_vpc_security_group_egress_rule" "sg-egress-rule" {
 
 #create the EC2 instance
 resource "aws_instance" "terraform-instance" {
+  for_each = toset(["jenkins-master", "jenkins-slave", "ansible"])
   ami = data.aws_ami.ami_id.id
   instance_type = "t3.medium"
   key_name = aws_key_pair.terraform-key-pair.key_name
