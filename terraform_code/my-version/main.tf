@@ -93,7 +93,7 @@ resource "aws_route_table_association" "public-rt-assoc" {
 #create the key pair
 resource "aws_key_pair" "terraform-key-pair" {
   key_name = "terraform-key-pair"
-  public_key = file("~/.ssh/id_rsa.pub")
+  public_key = file("~/.ssh/id_ed25519.pub")
 }
 
 #create the SG for SSH access
