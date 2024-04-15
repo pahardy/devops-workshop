@@ -97,22 +97,30 @@ resource "aws_key_pair" "terraform-key-pair" {
 }
 
 #create the SG for SSH access
-resource "aws_security_group" "terraform-allow-ssh" {
-  name = "terraform-allow-ssh"
+resource "aws_security_group" "terraform-allow" {
+  name = "terraform-allow"
   description = "Allow SSH traffic for EC2 instances created in Terraform"
   vpc_id = aws_vpc.terraform-vpc.id
 }
 
-resource "aws_vpc_security_group_ingress_rule" "sg-ingress-rule" {
-  security_group_id = aws_security_group.terraform-allow-ssh.id
+resource "aws_vpc_security_group_ingress_rule" "sg-ingress-rule-ssh" {
+  security_group_id = aws_security_group.terraform-allow.id
   cidr_ipv4 = "0.0.0.0/0"
   from_port = 22
   ip_protocol = "tcp"
   to_port = 22
 }
 
+resource "aws_vpc_security_group_ingress_rule" "sg-ingress-rule-jenkins" {
+  security_group_id = aws_security_group.terraform-allow.id
+  cidr_ipv4 = "0.0.0.0/0"
+  from_port = 8080
+  ip_protocol = "tcp"
+  to_port = 8080
+}
+
 resource "aws_vpc_security_group_egress_rule" "sg-egress-rule" {
-  security_group_id = aws_security_group.terraform-allow-ssh.id
+  security_group_id = aws_security_group.terraform-allow.id
   cidr_ipv4 = "0.0.0.0/0"
   ip_protocol = "-1"
 }
@@ -126,7 +134,7 @@ resource "aws_instance" "terraform-instance" {
   associate_public_ip_address = true
   #security_groups = [aws_security_group.terraform-allow-ssh.id]
   subnet_id = aws_subnet.public_subnets[0].id
-  vpc_security_group_ids = [aws_security_group.terraform-allow-ssh.id]
+  vpc_security_group_ids = [aws_security_group.terraform-allow.id]
 
   tags = {
     "Name" = each.value
